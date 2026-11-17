@@ -3,6 +3,6 @@ SELECT
     CAST(date_trunc('month', dt) AS DATE) AS month,
     uf,
     CAST(sum(cases) AS BIGINT) AS cases
-FROM daily_mart
+FROM mart_daily
 GROUP BY 1, uf
 ORDER BY month, uf

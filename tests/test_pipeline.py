@@ -58,7 +58,7 @@ def marts(settings):
 
 @pytest.fixture
 def con(settings):
-    """Conexão com `typed_cases` e `clean_cases` já criadas (o tratamento é em memória)."""
+    """Conexão com `stg_cases` e `int_cases` já criadas (o tratamento é em memória)."""
     audit = AuditLogger(settings.audit_log_path)
     csv_files = sorted(settings.staging_dir.glob("INFLUD*.csv"))
     with duckdb.connect() as connection:
@@ -69,7 +69,7 @@ def con(settings):
 
 def test_clean_cases_applies_every_rule(con):
     rows = con.sql(
-        "SELECT uf, hospital, evolucao, vacina_cov, classi_fin FROM clean_cases ORDER BY dt_notific"
+        "SELECT uf, hospital, evolucao, vacina_cov, classi_fin FROM int_cases ORDER BY dt_notific"
     ).fetchall()
     # duplicata removida (fica o desfecho conhecido), internação inferida pela UTI,
     # vacina 9 -> nulo, UF inválida e classificação 9 -> nulo.
@@ -120,6 +120,6 @@ def test_missing_staging_files_raise_a_clear_error(tmp_path):
 
 
 def test_sensitive_column_guard_blocks_sql():
-    assert_no_sensitive_columns("SELECT uf FROM typed_cases", "ok.sql")
+    assert_no_sensitive_columns("SELECT uf FROM stg_cases", "ok.sql")
     with pytest.raises(PermissionError, match="NU_CPF"):
         assert_no_sensitive_columns("SELECT nu_cpf FROM staging", "bad.sql")

@@ -1,9 +1,9 @@
--- TRATAMENTO (em memória): regras de qualidade e padronização sobre `typed_cases`.
--- Resultado na tabela temporária `clean_cases`: uma linha por caso notificado válido.
+-- TRATAMENTO (em memória): regras de qualidade e padronização sobre `stg_cases`.
+-- Resultado na tabela temporária `int_cases`: uma linha por caso notificado válido.
 -- Nada disso é gravado em disco; só os marts agregados são persistidos.
 WITH valid_dates AS (
     -- Regra 1: data de notificação ausente, anterior a 2019 ou futura é inválida.
-    SELECT * FROM typed_cases
+    SELECT * FROM stg_cases
     WHERE dt_notific BETWEEN DATE '2019-01-01' AND current_date
 ),
 

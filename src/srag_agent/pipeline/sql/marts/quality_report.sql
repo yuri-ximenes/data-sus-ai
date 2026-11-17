@@ -1,6 +1,6 @@
 -- Relatório de qualidade: compara os dados tipados (antes) e tratados (depois). Só contagens.
-WITH s AS (SELECT * FROM typed_cases),
-     c AS (SELECT * FROM clean_cases)
+WITH s AS (SELECT * FROM stg_cases),
+     c AS (SELECT * FROM int_cases)
 SELECT
     (SELECT count(*) FROM s) AS linhas_staging,
     (SELECT count(*) FROM s

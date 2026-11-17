@@ -1,5 +1,5 @@
 -- Lê os CSVs da camada STAGING (data/staging), mantém só as colunas úteis, renomeia e tipa.
--- Sem regra de negócio: só leitura e tipagem (tabela temporária `typed_cases`, em memória).
+-- Sem regra de negócio: só leitura e tipagem (tabela temporária `stg_cases`, em memória).
 -- Os campos usados apenas na chave (nº da notificação, município, sexo, idade etc.) viram um
 -- hash irreversível e NÃO são persistidos.
 SELECT

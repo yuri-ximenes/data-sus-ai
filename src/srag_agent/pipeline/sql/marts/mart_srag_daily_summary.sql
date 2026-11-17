@@ -15,6 +15,6 @@ SELECT
     count(*) FILTER (WHERE classi_fin = 3) AS cases_other_agent,
     count(*) FILTER (WHERE classi_fin = 4) AS cases_unspecified,
     count(*) FILTER (WHERE classi_fin = 5) AS cases_covid
-FROM clean_cases
+FROM int_cases
 GROUP BY dt_notific, uf
 ORDER BY dt, uf

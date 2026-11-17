@@ -1,7 +1,10 @@
-"""Executa a pipeline com DuckDB, inteiramente em memória.
+"""Executa a pipeline com DuckDB, inteiramente em memória, em três camadas.
 
-staging (CSVs em data/staging) -> tratamento -> marts agregados (DataFrames).
-Nada é gravado em disco: os marts seguem direto para o banco (ver `supabase.publish_marts`).
+staging      CSVs em data/staging, lidos e tipados          -> stg_cases   (sql/staging)
+intermediate tratamento: regras de qualidade e deduplicação -> int_cases   (sql/intermediate)
+marts        contagens agregadas, sem dado individual       -> mart_daily, mart_monthly (sql/marts)
+
+Nada é gravado em disco: só os marts seguem para o Supabase (ver `supabase.publish_marts`).
 """
 
 import time
@@ -34,22 +37,22 @@ def list_csv_files(staging_dir: Path) -> list[Path]:
     return files
 
 
-def _read_sql(name: str) -> str:
-    sql = (SQL_DIR / f"{name}.sql").read_text(encoding="utf-8")
-    assert_no_sensitive_columns(sql, f"{name}.sql")
+def _read_sql(layer: str, name: str) -> str:
+    sql = (SQL_DIR / layer / f"{name}.sql").read_text(encoding="utf-8")
+    assert_no_sensitive_columns(sql, f"{layer}/{name}.sql")
     return sql
 
 
 def _create_temp_table(
     con: duckdb.DuckDBPyConnection,
     table: str,
+    layer: str,
     sql_file: str,
     params: dict,
-    layer: str,
     audit: AuditLogger,
 ) -> None:
     started = time.perf_counter()
-    con.execute(f"CREATE OR REPLACE TEMP TABLE {table} AS " + _read_sql(sql_file), params)
+    con.execute(f"CREATE OR REPLACE TEMP TABLE {table} AS " + _read_sql(layer, sql_file), params)
     audit.log(
         "pipeline_layer",
         layer=layer,
@@ -60,20 +63,20 @@ def _create_temp_table(
 
 
 def load_staging(con: duckdb.DuckDBPyConnection, csv_files: list[Path], audit: AuditLogger) -> None:
-    """Lê os CSVs do staging para `typed_cases`: colunas úteis, renomeadas e tipadas."""
+    """Camada staging: lê os CSVs para `stg_cases` (colunas úteis, renomeadas e tipadas)."""
     params = {"files": [str(path) for path in csv_files]}
-    _create_temp_table(con, "typed_cases", "typed_srag_cases", params, "staging", audit)
+    _create_temp_table(con, "stg_cases", "staging", "stg_srag_cases", params, audit)
 
 
 def clean_cases(con: duckdb.DuckDBPyConnection, audit: AuditLogger) -> None:
-    """Aplica as regras de qualidade e gera `clean_cases` (uma linha por caso válido)."""
+    """Camada intermediate: aplica o tratamento e gera `int_cases` (um caso válido por linha)."""
     params = {"valid_ufs": sorted(VALID_UFS)}
-    _create_temp_table(con, "clean_cases", "clean_srag_cases", params, "tratamento", audit)
+    _create_temp_table(con, "int_cases", "intermediate", "int_srag_cases_clean", params, audit)
 
 
 def quality_report(con: duckdb.DuckDBPyConnection) -> dict[str, int]:
-    """Contagens antes/depois do tratamento (exige `typed_cases` e `clean_cases`)."""
-    row = con.sql(_read_sql("quality_report"), params={"valid_ufs": sorted(VALID_UFS)})
+    """Contagens antes/depois do tratamento (exige `stg_cases` e `int_cases`)."""
+    row = con.sql(_read_sql("marts", "quality_report"), params={"valid_ufs": sorted(VALID_UFS)})
     report = {key: int(value) for key, value in row.fetchdf().iloc[0].items()}
     report["descartadas_duplicadas"] = (
         report["linhas_staging"] - report["descartadas_data_invalida"] - report["linhas_tratadas"]
@@ -82,15 +85,15 @@ def quality_report(con: duckdb.DuckDBPyConnection) -> dict[str, int]:
 
 
 def build_marts(settings: Settings, audit: AuditLogger) -> Marts:
-    """Constrói os marts agregados a partir dos CSVs do staging."""
+    """staging -> intermediate (tratamento) -> marts agregados."""
     csv_files = list_csv_files(settings.staging_dir)
     audit.log("pipeline_start", sources=[path.name for path in csv_files])
     with duckdb.connect() as con:
         load_staging(con, csv_files, audit)
         clean_cases(con, audit)
-        _create_temp_table(con, "daily_mart", "mart_srag_daily_summary", {}, "mart_daily", audit)
-        daily = con.sql("SELECT * FROM daily_mart").df()
-        monthly = con.sql(_read_sql("mart_srag_monthly_summary")).df()
+        _create_temp_table(con, "mart_daily", "marts", "mart_srag_daily_summary", {}, audit)
+        daily = con.sql("SELECT * FROM mart_daily").df()
+        monthly = con.sql(_read_sql("marts", "mart_srag_monthly_summary")).df()
         quality = quality_report(con)
     audit.log("data_quality", **quality)
     return Marts(daily=daily, monthly=monthly, quality=quality)

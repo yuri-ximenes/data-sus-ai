@@ -101,15 +101,15 @@ Contexto adicional (também calculado em código, nunca pelo LLM):
 ## Tratamento dos dados
 
 O CSV tem **194 colunas** e centenas de milhares de linhas reais, com campos ignorados (`9`),
-ausentes e inconsistentes. O fluxo é `staging (CSV) → tratamento em memória → marts`
-(DuckDB, SQL em [src/srag_agent/pipeline/sql/](src/srag_agent/pipeline/sql)):
+ausentes e inconsistentes. O fluxo é `staging (CSV) → intermediate (tratamento) → marts → Supabase`
+(DuckDB em memória, SQL em [src/srag_agent/pipeline/sql/](src/srag_agent/pipeline/sql), uma pasta por camada):
 
-| Etapa | O que faz | Arquivo SQL |
+| Camada | O que faz | Arquivo SQL |
 |---|---|---|
-| **staging** | CSVs originais do Open DATASUS, intocados, em `data/staging/` | n/a |
-| **tipagem** | Das 194 colunas, mantém 7 úteis (`DT_NOTIFIC`, `SG_UF_NOT`, `HOSPITAL`, `UTI`, `EVOLUCAO`, `VACINA_COV`, `CLASSI_FIN`); converte datas (ISO ou dd/mm/aaaa) e códigos para tipos corretos | `typed_srag_cases.sql` |
-| **tratamento** | Aplica as 6 regras de qualidade abaixo, só em memória | `clean_srag_cases.sql` |
-| **marts** | Gera só contagens agregadas por data e UF e as publica no Supabase, que é o que o agente lê | `mart_srag_*_summary.sql` |
+| **staging** | CSVs originais do Open DATASUS, intocados, em `data/staging/`. Das 194 colunas, mantém 7 úteis (`DT_NOTIFIC`, `SG_UF_NOT`, `HOSPITAL`, `UTI`, `EVOLUCAO`, `VACINA_COV`, `CLASSI_FIN`) e converte datas (ISO ou dd/mm/aaaa) e códigos para tipos corretos, sem regra de negócio (`stg_cases`) | `staging/stg_srag_cases.sql` |
+| **intermediate** | É aqui que o tratamento acontece: aplica as 6 regras de qualidade abaixo e deixa um caso válido por linha (`int_cases`) | `intermediate/int_srag_cases_clean.sql` |
+| **marts** | Agrega o intermediate em contagens por data e UF (`mart_daily`, `mart_monthly`) e o relatório de qualidade; só os marts alimentam o Supabase | `marts/mart_srag_*_summary.sql`, `marts/quality_report.sql` |
+| **Supabase** | Recebe os marts (schema `srag`) e é a única fonte lida pelo agente | `pipeline/supabase.py` |
 
 Nenhum dado individual sai do tratamento em memória: só os marts (17.944 linhas diárias e 654
 mensais, mais o relatório de qualidade) chegam ao banco, e nada é gravado em disco.
