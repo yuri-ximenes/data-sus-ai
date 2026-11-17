@@ -14,7 +14,15 @@ from pydantic import BaseModel, Field, field_validator
 from srag_agent.audit import AuditLogger
 from srag_agent.charts import plot_daily, plot_monthly
 from srag_agent.config import VALID_UFS, Settings
-from srag_agent.metrics import Metric, compute_all
+from srag_agent.metrics import (
+    EtiologyBreakdown,
+    Metric,
+    compute_all,
+    etiology_breakdown,
+    top_ufs_by_cases,
+    top_ufs_by_growth,
+    uf_summary,
+)
 from srag_agent.news import NewsItem, fetch_news
 
 UNTRUSTED_NOTICE = (
@@ -27,13 +35,27 @@ class ToolContext:
     """Estado compartilhado entre as tools e o restante do pipeline."""
 
     settings: Settings
-    frame: pd.DataFrame
+    daily: pd.DataFrame  # mart diário (agregado por data e UF)
+    monthly: pd.DataFrame  # mart mensal
     as_of: date
     audit: AuditLogger
     metrics: list[Metric] = field(default_factory=list)
+    uf_top_cases: pd.DataFrame | None = None
+    uf_top_growth: pd.DataFrame | None = None
+    etiology: EtiologyBreakdown | None = None
     chart_paths: list[Path] = field(default_factory=list)
     news: list[NewsItem] = field(default_factory=list)
     uf: str | None = None
+
+    def grounded_percentages(self) -> list[float]:
+        """Todos os percentuais calculados em código; o LLM só pode citar estes."""
+        values = [m.value for m in self.metrics if m.value is not None]
+        for table in (self.uf_top_cases, self.uf_top_growth):
+            if table is not None:
+                values += table["variacao_pct"].dropna().tolist()
+        if self.etiology is not None:
+            values += self.etiology.table["percentual"].dropna().tolist()
+        return values
 
 
 class UfArgs(BaseModel):
@@ -59,6 +81,11 @@ class NewsArgs(BaseModel):
     )
 
 
+def _records(table: pd.DataFrame) -> list[dict]:
+    """Converte a tabela em lista de dicionários JSON-seguros (NaN vira None)."""
+    return table.astype(object).where(table.notna(), None).to_dict("records")
+
+
 def _audited(ctx: ToolContext, name: str, func: Callable[..., dict]) -> Callable[..., str]:
     def wrapper(**kwargs) -> str:
         started = time.perf_counter()
@@ -82,18 +109,42 @@ def _audited(ctx: ToolContext, name: str, func: Callable[..., dict]) -> Callable
 def build_tools(ctx: ToolContext) -> list[StructuredTool]:
     def get_metrics(uf: str | None = None) -> dict:
         ctx.uf = uf
-        ctx.metrics = compute_all(ctx.frame, ctx.as_of, ctx.settings.window_days, uf)
+        ctx.metrics = compute_all(ctx.daily, ctx.as_of, ctx.settings.window_days, uf)
         return {
             "summary": f"{len(ctx.metrics)} métricas calculadas",
             "data_referencia": ctx.as_of.isoformat(),
             "metricas": [metric.to_dict() for metric in ctx.metrics],
         }
 
+    def get_breakdowns(uf: str | None = None) -> dict:
+        days = ctx.settings.window_days
+        ctx.uf = uf
+        ctx.etiology = etiology_breakdown(ctx.daily, ctx.as_of, days, uf)
+        result = {
+            "summary": "composição por agente etiológico"
+            + (" e ranking por UF" if uf is None else ""),
+            "janela_dias": days,
+            "agente_etiologico": {
+                "percentual_sobre_casos_classificados": _records(ctx.etiology.table),
+                "casos_classificados": ctx.etiology.classified,
+                "casos_sem_classificacao_final": ctx.etiology.unclassified,
+            },
+        }
+        if uf is None:
+            summary = uf_summary(ctx.daily, ctx.as_of, days)
+            ctx.uf_top_cases = top_ufs_by_cases(summary)
+            ctx.uf_top_growth = top_ufs_by_growth(summary)
+            result["ufs_com_mais_casos"] = _records(ctx.uf_top_cases)
+            result["ufs_com_maior_crescimento"] = _records(ctx.uf_top_growth)
+        else:
+            result["observacao"] = "O ranking por UF só se aplica à visão nacional."
+        return result
+
     def make_charts(uf: str | None = None) -> dict:
         out_dir = ctx.settings.output_dir
         ctx.chart_paths = [
-            plot_daily(ctx.frame, ctx.as_of, out_dir, uf, 30),
-            plot_monthly(ctx.frame, ctx.as_of, out_dir, uf, ctx.settings.chart_months),
+            plot_daily(ctx.daily, ctx.as_of, out_dir, uf, 30),
+            plot_monthly(ctx.monthly, ctx.as_of, out_dir, uf, ctx.settings.chart_months),
         ]
         return {"summary": "2 gráficos gerados", "arquivos": [p.name for p in ctx.chart_paths]}
 
@@ -113,6 +164,13 @@ def build_tools(ctx: ToolContext) -> list[StructuredTool]:
             name="get_srag_metrics",
             description="Calcula as 4 métricas de SRAG (aumento de casos, mortalidade, UTI, "
             "vacinação) a partir do banco de dados.",
+            args_schema=UfArgs,
+        ),
+        StructuredTool.from_function(
+            func=_audited(ctx, "get_srag_breakdowns", get_breakdowns),
+            name="get_srag_breakdowns",
+            description="Retorna a composição dos casos por agente etiológico (influenza, COVID-19 "
+            "etc.) e, na visão nacional, as UFs com mais casos e com maior crescimento.",
             args_schema=UfArgs,
         ),
         StructuredTool.from_function(

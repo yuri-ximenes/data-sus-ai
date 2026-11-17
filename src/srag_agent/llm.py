@@ -1,4 +1,4 @@
-"""Fábrica do modelo de linguagem. Provedor padrão: Gemini (free tier); alternativa: Claude."""
+"""Fábrica do modelo de linguagem. Provedores: OpenAI (padrão), Claude, Gemini e Groq."""
 
 import os
 
@@ -7,14 +7,16 @@ from langchain_core.language_models.chat_models import BaseChatModel
 from srag_agent.config import Settings
 
 DEFAULT_MODELS = {
-    "groq": "llama-3.3-70b-versatile",
-    "gemini": "gemini-3.8-flash",
+    "openai": "gpt-4.1-mini",
     "anthropic": "claude-sonnet-5-5",
+    "gemini": "gemini-3.8-flash",
+    "groq": "llama-3.3-70b-versatile",
 }
 API_KEY_VARIABLES = {
-    "groq": "GROQ_API_KEY",
-    "gemini": "GOOGLE_API_KEY",
+    "openai": "OPENAI_API_KEY",
     "anthropic": "ANTHROPIC_API_KEY",
+    "gemini": "GOOGLE_API_KEY",
+    "groq": "GROQ_API_KEY",
 }
 
 
@@ -33,15 +35,20 @@ def create_llm(settings: Settings) -> BaseChatModel:
             f"Variável {key_variable} ausente. Copie env.example para .env e preencha a chave."
         )
     model = resolve_model_name(settings)
-    if provider == "groq":
-        from langchain_groq import ChatGroq
+    if provider == "openai":
+        from langchain_openai import ChatOpenAI
 
-        return ChatGroq(model=model, temperature=0, max_retries=3)
+        # Sem temperature: alguns modelos recentes só aceitam o valor padrão.
+        return ChatOpenAI(model=model, max_retries=3)
+    if provider == "anthropic":
+        from langchain_anthropic import ChatAnthropic
+
+        # Modelos Claude 5 não aceitam temperature fora do padrão.
+        return ChatAnthropic(model=model, max_tokens=2500)
     if provider == "gemini":
         from langchain_google_genai import ChatGoogleGenerativeAI
 
         return ChatGoogleGenerativeAI(model=model, temperature=0, max_retries=3)
-    from langchain_anthropic import ChatAnthropic
+    from langchain_groq import ChatGroq
 
-    # Modelos Claude 5 não aceitam temperature fora do padrão.
-    return ChatAnthropic(model=model, max_tokens=2500)
+    return ChatGroq(model=model, temperature=0, max_retries=3)

@@ -6,10 +6,45 @@ Data de referência: **2026-11-15** (janela de 30 dias).
 
 | Métrica | Valor | Numerador / Denominador | Definição |
 |---|---|---|---|
-| Taxa de aumento de casos | -15,6% | 14221 / 16853 | Variação % dos casos notificados nos últimos 30 dias vs. os 30 dias anteriores (numerador = casos atuais; denominador = casos do período anterior). |
-| Taxa de mortalidade | 4,7% | 322 / 6793 | Óbitos por SRAG / casos com desfecho conhecido, notificados nos últimos 30 dias. |
-| Taxa de ocupação de UTI | 29,2% | 3482 / 11939 | Proxy: internações por SRAG que passaram por UTI / internações com informação de UTI, últimos 30 dias. Não considera a capacidade total de leitos. |
-| Taxa de vacinação (COVID-19) | 42,4% | 5971 / 14066 | Proxy: casos de SRAG que receberam vacina COVID-19 / casos com informação vacinal, últimos 30 dias. Não é cobertura vacinal da população geral. |
+| Taxa de aumento de casos | -15,6% | 14.221 / 16.853 | Variação % dos casos notificados nos últimos 30 dias vs. os 30 dias anteriores (numerador = casos atuais; denominador = casos do período anterior). |
+| Variação vs. mesmo período do ano anterior | -34,7% | 14.221 / 21.764 | Casos dos últimos 30 dias vs. a mesma janela 52 semanas antes (sazonalidade). Dias recentes ainda sofrem atraso de notificação, o que tende a subestimar o valor. |
+| Taxa de mortalidade | 4,7% | 322 / 6.793 | Óbitos por SRAG / casos com desfecho conhecido, notificados nos últimos 30 dias. |
+| Taxa de ocupação de UTI | 29,7% | 3.565 / 12.022 | Proxy: internações por SRAG que passaram por UTI / internações com informação de UTI, últimos 30 dias. Não considera a capacidade total de leitos. |
+| Taxa de vacinação (COVID-19) | 42,4% | 5.971 / 14.066 | Proxy: casos de SRAG que receberam vacina COVID-19 / casos com informação vacinal, últimos 30 dias. Não é cobertura vacinal da população geral. |
+
+## Panorama por UF
+
+**UFs com mais casos** (últimos 30 dias):
+
+| UF | Casos | Casos no período anterior | Variação |
+|---|---|---|---|
+| SP | 3.607 | 3.777 | -4,5% |
+| PR | 1.645 | 1.777 | -7,4% |
+| MG | 1.314 | 1.798 | -26,9% |
+| RJ | 1.144 | 1.346 | -15,0% |
+| RS | 928 | 1.472 | -37,0% |
+
+**UFs com maior crescimento** (mínimo de 100 casos no período):
+
+| UF | Casos | Casos no período anterior | Variação |
+|---|---|---|---|
+| AC | 180 | 164 | 9,8% |
+| ES | 146 | 140 | 4,3% |
+| SP | 3.607 | 3.777 | -4,5% |
+| PR | 1.645 | 1.777 | -7,4% |
+| TO | 110 | 119 | -7,6% |
+
+## Agente etiológico
+
+| Agente | Casos | % dos classificados |
+|---|---|---|
+| Influenza | 473 | 5,0% |
+| Outro vírus respiratório | 3.213 | 34,1% |
+| Outro agente etiológico | 120 | 1,3% |
+| Não especificado | 4.939 | 52,5% |
+| COVID-19 | 668 | 7,1% |
+
+Casos classificados: 9.413. Ainda sem classificação final (em geral os mais recentes): 4.808.
 
 ## Gráficos
 
@@ -19,39 +54,36 @@ Data de referência: **2026-11-15** (janela de 30 dias).
 
 ## Cenário atual
 
-Com base nos dados consolidados do sistema de vigilância epidemiológica de Síndrome Respiratória Aguda Grave (SRAG) com data de referência em 15/11/2026, apresentam-se os seguintes indicadores:
+Nos últimos 30 dias, houve uma redução de 15,6% nos casos notificados de Síndrome Respiratória Aguda Grave (SRAG) em comparação com os 30 dias anteriores, indicando uma tendência de queda na incidência da doença no país. Essa diminuição é ainda mais expressiva quando comparada ao mesmo período do ano anterior, com uma queda de 34,7%, o que sugere uma sazonalidade favorável neste momento do ano. Entretanto, é importante considerar que os dados recentes ainda podem estar subestimados devido ao atraso de notificações.
 
-* **Taxa de aumento de casos:** registrou-se uma variação de **-15.6%** nos casos notificados nos últimos 30 dias (14.221 casos) em relação aos 30 dias imediatamente anteriores (16.853 casos).
-* **Taxa de mortalidade:** atingiu **4.7%** (322 óbitos entre os 6.793 casos com desfecho conhecido notificados no período).
-* **Taxa de UTI (proxy):** **29.2%** das internações por SRAG com registro sobre uso de terapia intensiva demandaram UTI (3.482 de 11.939 internações com informação preenchida). Ressalta-se que este valor é uma medida *proxy* calculada estritamente sobre os casos notificados, não refletindo a taxa global de ocupação dos leitos hospitalares.
-* **Taxa de vacinação COVID-19 (proxy):** **42.4%** dos casos notificados de SRAG com informação de histórico vacinal haviam recebido a vacina contra a COVID-19 (5.971 de 14.066 registros informados). Destaca-se que este indicador é um *proxy* restrito à população de casos notificados no banco, não equivalendo à cobertura vacinal da população geral.
+A taxa de mortalidade dos casos com desfecho conhecido está em 4,7%, o que é um indicativo significativo da gravidade dos casos que evoluem para óbito. A taxa de ocupação em unidades de terapia intensiva (UTI) associada a internações por SRAG é de 29,7%, o que mostra que quase um terço dos hospitalizados necessitaram de cuidados intensivos, um proxy da gravidade clínica predominante. A taxa de vacinação contra COVID-19 entre os casos notificados é de 42,4%, representando um percentual considerável, embora inferior à cobertura ideal na população geral.
 
-Para o acompanhamento da curva epidemiológica, foram gerados os seguintes gráficos de monitoramento:
-* Gráfico de casos diários (últimos 30 dias): `casos_diarios_2026-11-15.png`
-* Gráfico de casos mensais (últimos 12 meses): `casos_mensais_2026-11-15.png`
+Esses dados contrastam com algumas notícias que reportam crescimento de casos (ex.: "Casos de síndrome respiratória aguda grave crescem no país" - Agência Brasil), situação que pode ser explicada pelo foco regional dessas manchetes ou por diferenças metodológicas e temporais no acompanhamento dos dados, enquanto a análise nacional apresenta queda consolidada.
 
----
+## Panorama por UF e agente etiológico
+
+As unidades federativas com maior número absoluto de casos são São Paulo (3.607 casos), Paraná (1.645), Minas Gerais (1.314), Rio de Janeiro (1.144) e Rio Grande do Sul (928). Contudo, todas essas UFs registraram variação negativa no total de casos recentes, evidenciando retração da epidemia nessas regiões.
+
+Entre as UFs com maior crescimento percentual estão Acre (+9,8%) e Espírito Santo (+4,3%), esta última pequena mas com evidência de aumento na doença. Vale destacar que Acre apresentou notícia relacionada a redução da mortalidade ("Acre registra menor número de óbitos por síndrome respiratória aguda grave entre idosos desde 2024" - Agência de Notícias do Acre), o que pode indicar melhora no manejo clínico apesar do aumento de casos.
+
+Quanto ao agente etiológico, entre 9.413 casos já classificados, 34,1% são atribuídos a outros vírus respiratórios (não especificados aqui), 7,1% a COVID-19, 5,0% a Influenza e 1,3% a outros agentes. A maioria (52,5%) permanece sem especificação final, sendo provável que parte dela esteja relacionada aos agentes citados. Há 4.808 casos ainda sem classificação final por agente.
 
 ## Contexto das notícias
 
-As informações divulgadas recentemente pelos canais de imprensa e órgãos oficiais apontam heterogeneidade regional e atenção contínua para circulação viral:
-
-* [InfoGripe: cinco estados têm SRAG em nível de alerta ou risco, com sinal de crescimento - Fundação Oswaldo Cruz (Fiocruz)](https://news.google.com/rss/articles/CBMirAFBVV95cUxNVldjcW9TYm1BVDFES3dpSEJpaFEzbndraWFtMkFEUzNSRldvU29NX1QwaEpWVGxZRHhTVkVUSXBEVDlBbFlaeEE2ZkNpWUlKX1h5S1BKNVc4TWt2QUVBbmRDWndZWkVnZ25BbG1uNk51bnd1cTRvRnZ2eDZRbVFnQjZIWkVmMUw4ZGZJRm1PS2hNNjBrWi1lbS1JRGtOM3MtRGZqcUNrZ3dvQldf?oc=5) (Fundação Oswaldo Cruz - Fiocruz): Destaca que, apesar da estabilização ou queda agregada nacional, unidades federativas específicas apresentaram sinais de elevação de SRAG.
-* [Cinco estados do Brasil estão em nível de risco para síndrome respiratória - CNN Brasil](https://news.google.com/rss/articles/CBMirwFBVV95cUxOM1RyRk9BNUQ0aERoaFVNd1JXaHFCVVJrZmJvdTZPaXNBVHdWa0N2M0U1cmEya1NESFF5SEpncU5iRlJnUzBnUlh4N2kwR1V2U0Z0RkhHWTFLQTctejVQM0x4c2g5VTFYYU9CU05TMm9HemxXMlk4TEZhdFFnNGV5S0RKOHJUOTUydFd2eURsMFI3Sl9vaEhkcHBnUWphRjN2YkZjQlJrNkVxaTQ5a2d3?oc=5) (CNN Brasil): Corrobora o cenário de risco localizado para quadros respiratórios graves.
-* [Fiocruz identifica aumento de casos graves por três vírus respiratórios no Brasil - cff.org.br](https://news.google.com/rss/articles/CBMi1wFBVV95cUxNN0hTVGFnb3pqWGxoRENCRzF5REFkLVlGejhLUU4xbDhsbGlsaTRCY211NWROUkEycldWUDl0NU4tSDZRRkQybWI0SEQ1bm9IRERKQldUMF9aU1lwRjhFcHAyOFk2cWN0SmJnWExfZjZ6MnJ1S3dvRzRwbXRSdzJReUVZaDkyVmFsQldYczlOTWdQRlp4TnczRGNRVndMczJWd2N1amJ3NWJtb242LVlTaXJNMWE5Qkc0MEFpQjBndk9NTHNKWEFVb2g2Q1dZMHhEM1VKOE5jZw?oc=5) (cff.org.br): Relata a cocirculação e pressão de diferentes patógenos virais no agravamento de quadros respiratórios.
-* [Nota Técnica do COSEMS/SP nº 06 – Aumento de casos de SRAG por Covid-19 no estado de São Paulo - COSEMS/SP](https://news.google.com/rss/articles/CBMiygFBVV95cUxOUlNkQXBVLXVGdHNveVkzQWFNVVRzZDN1ZG9PN3Ayb0xZeWl3VERNYTRsUVVMVVNqN1RmQ0tVdXMwOHFRai1VakFQVmFHX0hjT0dxVDZFUkZGa0RFZWppMmVhX2lDRlFLX1BmeVg3MnFxQ3gxd2RnMHRlMnNJeThLYnFnaTBRYkx0OEo4QnNTdGVHQ0xlaEZRT0xLd2pVcExUNFZrVVdFRDRRNnhPVng0cGdOMUNMcHdWRzJZMlNjQjlsSmd0TWpTZUZR?oc=5) (COSEMS/SP): Alerta serviços de saúde sobre o comportamento epidemiológico recente em âmbito estadual.
-* [Acre registra menor número de óbitos por síndrome respiratória aguda grave entre idosos desde 2024 - Agência de Notícias do Acre](https://news.google.com/rss/articles/CBMiwwFBVV95cUxPWnNfaWgyQloxNlJXbHIxV1RHQk1aSWxBd0x4X2djVWV3cUV0MkZ3dkZ6akhCd2huOXFJaUJqY2w5Vm8wNjJVTXNsVUJ6TGRNRmRNX21HdzRocUN5M1d3eWhrRjg1NkN3ZXNjTVFydkdfRW9lNzhMRFdSUURSTlpIUXNhb2ZMTmtnanpWRUV3Z2xhTVdsbHFHZTVaNVpGZG1UQUpnNGNzZXl5NUlSanNlMFY4TXNnY2lnVk84bWhpdkJhN1k?oc=5) (Agência de Notícias do Acre): Apresenta redução da mortalidade proporcional em faixas etárias vulneráveis na localidade.
-
----
+- A Fundação Oswaldo Cruz (Fiocruz) informou que cinco estados estão em nível de alerta ou risco com sinal de crescimento, o que condiz com o aumento percentual em algumas UFs, como Acre e Espírito Santo, apesar da tendência nacional de queda.
+- A notícia do Acre relacionada à menor mortalidade entre idosos confirma os dados de baixa letalidade relativa local, importante destacar para o manejo clínico regional.
+- A manchete da Agência Brasil apontando crescimento nacional diverge dos dados nacionais atuais, possivelmente refletindo recortes temporais, atrasos na notificação ou foco regional.
+- O G1 destaca Sergipe em nível de alerta, porém essa UF não está entre as maiores em casos totais; pode indicar situação pontual que não impacta ainda a estatística nacional.
+- A COSEMS/SP destacou aumento de casos de COVID-19 em São Paulo; os dados atuais mostram ligeira queda na UF, o que pode sugerir que já ocorreu pico recente ou variação local que ainda não foi refletida totalmente.
+- Notícias da Prefeitura de Campo Grande ressaltam importância da vacinação e medidas preventivas, alinhadas à taxa proxy informada de vacinação no cenário nacional (42,4%).
 
 ## Limitações
 
-1. **Atraso de notificação e digitação:** Dados epidemiológicos de SRAG sofrem influência de fechamento tardio de fichas e confirmação diagnóstica laboratorial, o que pode subestimar dados dos períodos mais recentes.
-2. **Proxies epidemiológicos:**
-   * A **taxa de internação em UTI** reflete exclusivamente a proporção de casos graves notificados que utilizaram suporte intensivo entre as fichas com preenchimento deste campo, não indicando a taxa de ocupação da capacidade instalada da rede hospitalar.
-   * A **taxa de vacinação** mensura apenas os indivíduos notificados no banco com registro de vacina da COVID-19 sobre aqueles com campo de imunização preenchido, não devendo ser confundida com a cobertura vacinal populacional do Programa Nacional de Imunizações (PNI).
-3. **Casos com desfecho pendente:** A taxa de mortalidade considera apenas casos com desfecho final já consolidado (óbito ou cura), podendo variar conforme novos desfechos forem informados.
-4. **Fonte das notícias:** O conteúdo jornalístico e notas técnicas externas oferecem contextualização qualitativa e territorial pontual, porém não substituem a análise direta dos microdados oficiais nem representam direcionamento institucional mandatório.
+Os dados possuem limitações importantes: o atraso na notificação dos casos pode subestimar casos mais recentes, afetando as análises temporais. A alta proporção de casos sem classificação etiológica final (52,5%) dificulta a avaliação precisa da contribuição de cada agente viral. A taxa de ocupação de UTI e de vacinação são proxies calculados apenas sobre os casos notificados, não refletindo necessariamente a situação na população geral ou a capacidade total do sistema de saúde. Além disso, as notícias são baseadas apenas nos títulos, sem análise do conteúdo completo, limitando a completa interpretação.
+
+---
+
+Foram gerados dois gráficos complementares para consulta visual dos casos diários e mensais nos arquivos "casos_diarios_2026-11-15.png" e "casos_mensais_2026-11-15.png".
 
 ## Fontes de notícias
 
@@ -64,12 +96,26 @@ As informações divulgadas recentemente pelos canais de imprensa e órgãos ofi
 - [Sesau reforça importância da vacinação e medidas de prevenção da Covid – CGNotícias - Prefeitura de Campo Grande](https://news.google.com/rss/articles/CBMiwgFBVV95cUxPdkRFVkRoMU5KN1doM2dnSlE3SUFGcGs2RlJxbWotVERWYUtTeTFNN3YzUFg5VFh6Ulh0Z1djcUlURmY3bUlfV2VMc082bkctQ3NoX21GUUpuSklvc3JxWHl0WkNkUWY4dm9kdXpFdkNyZ2ZTZmZPN3lGYkFMUi1jc0FZQ0R2N2JlTXF0RE8tOU5Od3NaemV3dV9pY0RVVkM5X3ZPUW41Mk1LclM3Sk1LWVBMNXc4R0w3VVRqM2xWMFRQZw?oc=5) - Prefeitura de Campo Grande, 2026-11-11
 - [Fiocruz identifica aumento de casos graves por três vírus respiratórios no Brasil - cff.org.br](https://news.google.com/rss/articles/CBMi1wFBVV95cUxNN0hTVGFnb3pqWGxoRENCRzF5REFkLVlGejhLUU4xbDhsbGlsaTRCY211NWROUkEycldWUDl0NU4tSDZRRkQybWI0SEQ1bm9IRERKQldUMF9aU1lwRjhFcHAyOFk2cWN0SmJnWExfZjZ6MnJ1S3dvRzRwbXRSdzJReUVZaDkyVmFsQldYczlOTWdQRlp4TnczRGNRVndMczJWd2N1amJ3NWJtb242LVlTaXJNMWE5Qkc0MEFpQjBndk9NTHNKWEFVb2g2Q1dZMHhEM1VKOE5jZw?oc=5) - cff.org.br, 2026-11-10
 
-## Qualidade dos dados
+## Qualidade dos dados (tratamento staging → marts)
 
-- linhas lidas: 585334
-- descartadas sem data: 0
-- descartadas data fora do intervalo: 0
-- linhas validas: 585334
+| Etapa de tratamento | Linhas |
+|---|---|
+| Linhas lidas do CSV (staging) | 585.334 |
+| Descartadas: data de notificação ausente, pré-2019 ou futura | 0 |
+| Descartadas: notificações duplicadas | 0 |
+| Linhas válidas após o tratamento | 585.334 |
+| Internação inferida pela passagem por UTI | 1.418 |
+| UF inválida convertida para nulo | 0 |
+| Internação com código ignorado (9) convertida para nulo | 781 |
+| UTI com código ignorado (9) convertida para nulo | 5.409 |
+| Evolução com código ignorado (9) convertida para nulo | 11.442 |
+| Vacina COVID com código ignorado (9) convertida para nulo | 6.537 |
+| Casos sem UF (entram no total nacional, não nos filtros por UF) | 36 |
+| Classificação final fora do domínio convertida para nulo | 0 |
+| Casos sem classificação final (fora da composição por agente) | 26.428 |
+| Casos sem informação de UTI (excluídos do denominador) | 62.365 |
+| Casos sem desfecho (excluídos do denominador da mortalidade) | 55.181 |
+| Casos sem informação vacinal (excluídos do denominador) | 6.600 |
 
 > Dados agregados do Open DATASUS (SIVEP-Gripe); casos recentes sofrem atraso de notificação.
 > Relatório de apoio à decisão, não substitui avaliação epidemiológica profissional.

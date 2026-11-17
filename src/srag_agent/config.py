@@ -48,10 +48,10 @@ VALID_UFS = frozenset(
 class Settings:
     """Parâmetros de execução. Valores sensíveis (chaves de API) vêm só do ambiente."""
 
-    raw_data_dir: Path = PROJECT_ROOT / "data" / "raw"
+    data_dir: Path = PROJECT_ROOT / "data"
     output_dir: Path = PROJECT_ROOT / "reports"
     audit_log_path: Path = PROJECT_ROOT / "logs" / "audit.jsonl"
-    provider: str = os.getenv("SRAG_PROVIDER", "gemini")
+    provider: str = os.getenv("SRAG_PROVIDER", "openai")
     model_name: str = os.getenv("SRAG_MODEL", "")  # vazio = padrão do provedor
     window_days: int = 30
     chart_months: int = 12
@@ -59,3 +59,20 @@ class Settings:
     news_max_age_days: int = 30
     max_guardrail_retries: int = 2
     agent_recursion_limit: int = 25
+
+    @property
+    def staging_dir(self) -> Path:
+        """Camada staging: os CSVs originais do Open DATASUS (INFLUD*.csv)."""
+        return self.data_dir / "staging"
+
+    @property
+    def daily_mart_file(self) -> Path:
+        return self.data_dir / "marts" / "mart_srag_daily_summary.parquet"
+
+    @property
+    def monthly_mart_file(self) -> Path:
+        return self.data_dir / "marts" / "mart_srag_monthly_summary.parquet"
+
+    @property
+    def quality_report_file(self) -> Path:
+        return self.data_dir / "marts" / "quality_report.json"

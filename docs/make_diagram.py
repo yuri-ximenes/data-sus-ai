@@ -62,7 +62,7 @@ box(ax, 5.4, 3.7, 2.8, 0.9, "Guardrail de saída\nsem PII, números ancorados", 
 box(ax, 0.4, 1.7, 2.8, 1.0, "Tool: get_srag_metrics\n4 métricas", "tool")
 box(ax, 3.6, 1.7, 2.8, 1.0, "Tool: generate_srag_charts\ndiário 30d / mensal 12m", "tool")
 box(ax, 6.8, 1.7, 2.8, 1.0, "Tool: search_srag_news\nnotícias sanitizadas", "tool")
-box(ax, 0.4, 0.3, 2.8, 0.8, "DuckDB + CSV Open DATASUS\n(6 colunas, sem PII)", "ext")
+box(ax, 0.4, 0.3, 2.8, 0.8, "Marts Parquet (agregados)\nstaging→tratamento→marts", "ext")
 box(ax, 6.8, 0.3, 2.8, 0.8, "Google News RSS\n(tempo real)", "ext")
 box(ax, 10.2, 1.7, 2.6, 1.0, "Relatório Markdown\nmétricas + gráficos\n+ análise + fontes", "out")
 box(ax, 10.2, 3.7, 2.6, 0.9, "Auditoria JSONL\nhash encadeado", "guard")

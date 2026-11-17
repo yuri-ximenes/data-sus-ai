@@ -47,6 +47,14 @@ URL_PATTERN = re.compile(r"https?://[^\s)\]>]+")
 PERCENT_PATTERN = re.compile(r"(\d+(?:[.,]\d+)?)\s*%")
 
 
+IMAGE_PATTERN = re.compile(r"^[ \t]*!\[[^\]]*\]\([^)]*\)[ \t]*\n?", re.MULTILINE)
+
+
+def strip_markdown_images(text: str) -> str:
+    """Remove imagens inseridas pelo LLM; os gráficos são inseridos só pelo relatório."""
+    return IMAGE_PATTERN.sub("", text).strip()
+
+
 @dataclass
 class GuardrailResult:
     ok: bool
