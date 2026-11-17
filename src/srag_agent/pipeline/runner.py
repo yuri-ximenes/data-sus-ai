@@ -1,15 +1,15 @@
-"""Executa a pipeline com DuckDB.
+"""Executa a pipeline com DuckDB, inteiramente em memória.
 
-staging (CSVs em data/staging) -> tratamento em memória -> marts agregados (Parquet).
-Nenhum dado individual é gravado em disco: só os marts e o relatório de qualidade.
+staging (CSVs em data/staging) -> tratamento -> marts agregados (DataFrames).
+Nada é gravado em disco: os marts seguem direto para o banco (ver `supabase.publish_marts`).
 """
 
-import json
 import time
 from dataclasses import dataclass
 from pathlib import Path
 
 import duckdb
+import pandas as pd
 
 from srag_agent.audit import AuditLogger
 from srag_agent.config import VALID_UFS, Settings
@@ -19,11 +19,12 @@ SQL_DIR = Path(__file__).parent / "sql"
 
 
 @dataclass(frozen=True)
-class Mart:
-    name: str
-    sql_file: str
-    output: Path
-    params: dict
+class Marts:
+    """Resultado da pipeline: contagens agregadas e o relatório de qualidade."""
+
+    daily: pd.DataFrame
+    monthly: pd.DataFrame
+    quality: dict[str, int]
 
 
 def list_csv_files(staging_dir: Path) -> list[Path]:
@@ -31,15 +32,6 @@ def list_csv_files(staging_dir: Path) -> list[Path]:
     if not files:
         raise FileNotFoundError(f"Nenhum arquivo INFLUD*.csv encontrado em {staging_dir}")
     return files
-
-
-def needs_rebuild(settings: Settings) -> bool:
-    """True se os marts não existem ou algum CSV do staging é mais novo que eles."""
-    marts = [settings.daily_mart_file, settings.monthly_mart_file, settings.quality_report_file]
-    if not all(path.exists() for path in marts):
-        return True
-    newest_csv = max(path.stat().st_mtime for path in list_csv_files(settings.staging_dir))
-    return newest_csv > min(path.stat().st_mtime for path in marts)
 
 
 def _read_sql(name: str) -> str:
@@ -79,32 +71,6 @@ def clean_cases(con: duckdb.DuckDBPyConnection, audit: AuditLogger) -> None:
     _create_temp_table(con, "clean_cases", "clean_srag_cases", params, "tratamento", audit)
 
 
-def _build_marts(settings: Settings) -> list[Mart]:
-    return [
-        Mart("mart_daily", "mart_srag_daily_summary", settings.daily_mart_file, {}),
-        Mart(
-            "mart_monthly",
-            "mart_srag_monthly_summary",
-            settings.monthly_mart_file,
-            {"input": str(settings.daily_mart_file)},
-        ),
-    ]
-
-
-def _write_mart(con: duckdb.DuckDBPyConnection, mart: Mart, audit: AuditLogger) -> None:
-    started = time.perf_counter()
-    mart.output.parent.mkdir(parents=True, exist_ok=True)
-    con.sql(_read_sql(mart.sql_file), params=mart.params).write_parquet(str(mart.output))
-    rows = con.sql("SELECT count(*) FROM read_parquet($path)", params={"path": str(mart.output)})
-    audit.log(
-        "pipeline_layer",
-        layer=mart.name,
-        output=mart.output.name,
-        rows=rows.fetchall()[0][0],
-        duration_s=round(time.perf_counter() - started, 2),
-    )
-
-
 def quality_report(con: duckdb.DuckDBPyConnection) -> dict[str, int]:
     """Contagens antes/depois do tratamento (exige `typed_cases` e `clean_cases`)."""
     row = con.sql(_read_sql("quality_report"), params={"valid_ufs": sorted(VALID_UFS)})
@@ -115,18 +81,16 @@ def quality_report(con: duckdb.DuckDBPyConnection) -> dict[str, int]:
     return report
 
 
-def run_pipeline(settings: Settings, audit: AuditLogger) -> dict[str, int]:
-    """Constrói os marts a partir do staging; persiste o relatório de qualidade."""
+def build_marts(settings: Settings, audit: AuditLogger) -> Marts:
+    """Constrói os marts agregados a partir dos CSVs do staging."""
     csv_files = list_csv_files(settings.staging_dir)
     audit.log("pipeline_start", sources=[path.name for path in csv_files])
     with duckdb.connect() as con:
         load_staging(con, csv_files, audit)
         clean_cases(con, audit)
-        for mart in _build_marts(settings):
-            _write_mart(con, mart, audit)
+        _create_temp_table(con, "daily_mart", "mart_srag_daily_summary", {}, "mart_daily", audit)
+        daily = con.sql("SELECT * FROM daily_mart").df()
+        monthly = con.sql(_read_sql("mart_srag_monthly_summary")).df()
         quality = quality_report(con)
-    settings.quality_report_file.write_text(
-        json.dumps(quality, ensure_ascii=False, indent=2), encoding="utf-8"
-    )
     audit.log("data_quality", **quality)
-    return quality
+    return Marts(daily=daily, monthly=monthly, quality=quality)

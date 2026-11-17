@@ -1,12 +1,18 @@
-"""Pipeline de dados: staging (CSV) -> tratamento em memória -> marts agregados (Parquet)."""
+"""Pipeline de dados: staging (CSV) -> tratamento em memória -> marts agregados no Supabase."""
 
-from srag_agent.pipeline.runner import needs_rebuild, run_pipeline
-from srag_agent.pipeline.warehouse import load_daily_summary, load_monthly_summary, load_quality
+from srag_agent.pipeline.runner import Marts, build_marts
+from srag_agent.pipeline.supabase import (
+    publish_marts,
+    read_daily_summary,
+    read_monthly_summary,
+    read_quality,
+)
 
 __all__ = [
-    "load_daily_summary",
-    "load_monthly_summary",
-    "load_quality",
-    "needs_rebuild",
-    "run_pipeline",
+    "Marts",
+    "build_marts",
+    "publish_marts",
+    "read_daily_summary",
+    "read_monthly_summary",
+    "read_quality",
 ]

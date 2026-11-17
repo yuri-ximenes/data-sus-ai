@@ -78,7 +78,9 @@ box(
     0.3,
     4.2,
     0.8,
-    "Banco de dados: marts Parquet (agregados)\nstaging CSV → tratamento → marts",
+    "Banco de dados: Supabase (Postgres)\n"
+    "marts agregados, somente leitura\n"
+    "staging CSV → tratamento → marts",
     "ext",
 )
 box(ax, 8.0, 0.3, TOOL_W, 0.8, "Google News RSS\n(tempo real)", "ext")

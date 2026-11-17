@@ -12,7 +12,7 @@ Diagrama conceitual: [docs/arquitetura.pdf](docs/arquitetura.pdf).
 Pedido ─► [Guardrail de entrada] ─► Agente orquestrador (LangGraph) ◄─► LLM
                                           │
                                           ├─ get_srag_metrics ────┐
-                                          ├─ get_srag_breakdowns ─┼─► marts agregados (Parquet)
+                                          ├─ get_srag_breakdowns ─┼─► Supabase (Postgres, marts)
                                           ├─ generate_srag_charts ┘
                                           └─ search_srag_news ─────► Google News RSS
                                           ▼
@@ -42,9 +42,11 @@ escreve a análise. Cada decisão, chamada de tool e resultado de guardrail é r
 - **Agente com tools, sem RAG ou banco vetorial.** O problema é de consulta e cálculo sobre dados
   estruturados e de notícias do momento, não de busca semântica em documentos; embeddings não
   agregariam precisão, só custo e complexidade.
-- **DuckDB + Parquet em vez de um banco servidor.** 585 mil linhas cabem em memória, e o avaliador
-  reproduz tudo clonando o repositório, sem credenciais nem infraestrutura. Os marts agregados fazem o
-  papel do banco consultado pelo agente.
+- **Supabase (Postgres) como banco consultado pelo agente.** O tratamento dos 585 mil registros roda
+  em DuckDB, em memória, e só os marts agregados (poucos milhares de linhas, sem dado individual)
+  são publicados no banco. As tools leem por consultas SQL fixas, em transação somente leitura: o
+  LLM nunca escreve SQL. As tabelas ficam num schema próprio (`srag`) com RLS ligado. Nenhum
+  arquivo de dados derivado é gravado em disco.
 - **Notícias por Google News RSS.** Gratuito, em português e sem chave de API; os títulos entram como
   dado externo não confiável.
 - **LLM configurável.** A mesma fiação funciona com 4 provedores, o que evitou o projeto ficar
@@ -107,9 +109,10 @@ ausentes e inconsistentes. O fluxo é `staging (CSV) → tratamento em memória 
 | **staging** | CSVs originais do Open DATASUS, intocados, em `data/staging/` | n/a |
 | **tipagem** | Das 194 colunas, mantém 7 úteis (`DT_NOTIFIC`, `SG_UF_NOT`, `HOSPITAL`, `UTI`, `EVOLUCAO`, `VACINA_COV`, `CLASSI_FIN`); converte datas (ISO ou dd/mm/aaaa) e códigos para tipos corretos | `typed_srag_cases.sql` |
 | **tratamento** | Aplica as 6 regras de qualidade abaixo, só em memória | `clean_srag_cases.sql` |
-| **marts** | Grava em Parquet só contagens agregadas por data e UF (`data/marts/`), que são o que o agente lê | `mart_srag_*_summary.sql` |
+| **marts** | Gera só contagens agregadas por data e UF e as publica no Supabase, que é o que o agente lê | `mart_srag_*_summary.sql` |
 
-Nenhum dado individual vai para o disco: só os marts (~150 KB) e o `quality_report.json`.
+Nenhum dado individual sai do tratamento em memória: só os marts (17.944 linhas diárias e 654
+mensais, mais o relatório de qualidade) chegam ao banco, e nada é gravado em disco.
 
 ### Regras de tratamento e efeito real
 
@@ -143,23 +146,44 @@ Exemplo ilustrativo, com valores fictícios, do que o tratamento faz com uma lin
 | `VACINA_COV` | `9` (ignorado) | nulo (fora do denominador) | 5 e 6 |
 | `SG_UF_NOT` | `XX` | nulo (segue no total nacional) | 3 |
 
-A pipeline roda automaticamente na primeira execução e quando os CSVs mudam; `--rebuild` força.
-Limitação conhecida: casos recentes sofrem atraso de notificação, então a taxa de aumento e a
+A pipeline só roda com `--publish-supabase`, quando os CSVs mudam. Limitação conhecida: casos recentes sofrem atraso de notificação, então a taxa de aumento e a
 mortalidade dos últimos dias tendem a ser subestimadas.
+
+## Banco de dados (Supabase)
+
+Os marts ficam no schema `srag` (`mart_daily_summary`, `mart_monthly_summary`, `quality_report`).
+O relatório lê **somente** desse banco, então **não é preciso baixar os CSVs** para executá-lo.
+
+**Credencial somente leitura para avaliação** (papel `data_reader`: apenas `SELECT` no schema
+`srag`, 5 conexões, consultas de até 10 s; os dados são agregados e públicos):
+
+```
+SUPABASE_DB_URL=postgresql://data_reader.juulwlnkyhwavcbokxks:datasusread@aws-0-us-west-2.pooler.supabase.com:5432/postgres
+
+```
+
+> Substitua os três marcadores `<...>` pelos valores reais antes de publicar este README.
+
+Para publicar os marts (dono do projeto): coloque a conexão do dono em `SUPABASE_DB_URL`, baixe os
+CSVs para `data/staging/` e rode `uv run srag-report --publish-supabase`. Para criar o papel de
+leitura, execute [docs/supabase_readonly.sql](docs/supabase_readonly.sql) no SQL Editor do Supabase.
 
 ## Como executar
 ```bash
 uv sync
-# 1. Baixe INFLUD25*.csv e INFLUD26*.csv de https://dadosabertos.saude.gov.br/dataset/srag-2019-a-2026
-#    e salve em data/staging/ (o nome deve começar com INFLUD).
-# 2. cp env.example .env   e preencha OPENAI_API_KEY (https://platform.openai.com/api-keys)
-#    Provedor padrão: OpenAI. Alternativas: SRAG_PROVIDER=anthropic, gemini ou groq (ver env.example).
-uv run srag-report                # Brasil
-uv run srag-report --uf SP        # por UF
-uv run srag-report --no-llm       # sem LLM (apenas métricas, gráficos e notícias)
-uv run srag-report --rebuild      # reexecuta a pipeline de dados (staging -> marts)
-uv run pytest                     # testes
+# 1. cp env.example .env e preencha:
+#    - OPENAI_API_KEY (https://platform.openai.com/api-keys); alternativas: SRAG_PROVIDER=anthropic,
+#      gemini ou groq (ver env.example)
+#    - SUPABASE_DB_URL com a credencial somente leitura da seção acima
+uv run srag-report                  # Brasil
+uv run srag-report --uf SP          # por UF
+uv run srag-report --no-llm         # sem LLM (apenas métricas, gráficos e notícias)
+uv run srag-report --publish-supabase  # (dono) refaz a pipeline e publica os marts no banco
+uv run pytest                       # testes
 ```
+`--publish-supabase` lê os CSVs de `data/staging/` (baixe os `INFLUD*.csv` em
+https://dadosabertos.saude.gov.br/dataset/srag-2019-a-2026), trata em memória e publica os marts.
+
 O relatório é salvo em `reports/relatorio_<data>.md`, com os gráficos ao lado.
 Um exemplo real gerado pelo agente está em [docs/exemplo/](docs/exemplo/relatorio_2026-11-15.md).
 O dicionário de dados usado como referência está em `docs/dicionario-de-dados-2019-a-2025.pdf`.

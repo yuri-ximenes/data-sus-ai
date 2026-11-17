@@ -8,7 +8,6 @@ __pycache__/
 !.env.example
 data/staging/*
 !data/staging/.gitkeep
-data/marts/
 logs/
 reports/*
 !reports/.gitkeep

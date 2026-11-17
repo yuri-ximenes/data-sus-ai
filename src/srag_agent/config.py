@@ -64,15 +64,3 @@ class Settings:
     def staging_dir(self) -> Path:
         """Camada staging: os CSVs originais do Open DATASUS (INFLUD*.csv)."""
         return self.data_dir / "staging"
-
-    @property
-    def daily_mart_file(self) -> Path:
-        return self.data_dir / "marts" / "mart_srag_daily_summary.parquet"
-
-    @property
-    def monthly_mart_file(self) -> Path:
-        return self.data_dir / "marts" / "mart_srag_monthly_summary.parquet"
-
-    @property
-    def quality_report_file(self) -> Path:
-        return self.data_dir / "marts" / "quality_report.json"

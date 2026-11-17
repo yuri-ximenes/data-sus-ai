@@ -2,7 +2,7 @@
 SELECT
     CAST(date_trunc('month', dt) AS DATE) AS month,
     uf,
-    sum(cases) AS cases
-FROM read_parquet($input)
+    CAST(sum(cases) AS BIGINT) AS cases
+FROM daily_mart
 GROUP BY 1, uf
 ORDER BY month, uf

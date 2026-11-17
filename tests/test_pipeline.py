@@ -1,17 +1,11 @@
-"""Teste de integração: staging (CSV) -> tratamento em memória -> marts, com CSV sintético."""
+"""Teste de integração: staging (CSV) -> tratamento -> marts em memória, com CSV sintético."""
 
 import duckdb
 import pytest
 
 from srag_agent.audit import AuditLogger
 from srag_agent.config import Settings
-from srag_agent.pipeline import (
-    load_daily_summary,
-    load_monthly_summary,
-    load_quality,
-    needs_rebuild,
-    run_pipeline,
-)
+from srag_agent.pipeline import build_marts
 from srag_agent.pipeline.runner import clean_cases, load_staging, quality_report
 from srag_agent.pipeline.sensitive import assert_no_sensitive_columns
 
@@ -58,8 +52,8 @@ def settings(tmp_path) -> Settings:
 
 
 @pytest.fixture
-def built(settings):
-    return settings, run_pipeline(settings, AuditLogger(settings.audit_log_path))
+def marts(settings):
+    return build_marts(settings, AuditLogger(settings.audit_log_path))
 
 
 @pytest.fixture
@@ -96,30 +90,33 @@ def test_quality_report_counts_every_rule(con):
     assert quality["ausentes_uf"] == 1
 
 
-def test_marts_are_aggregated_without_identifiers(built):
-    settings, _ = built
-    daily = load_daily_summary(settings)
+def test_marts_are_aggregated_without_identifiers(marts):
+    daily = marts.daily
     assert int(daily["cases"].sum()) == 3
     assert int(daily["cases_covid"].sum()) == 1
     assert int(daily["cases_influenza"].sum()) == 1
-    assert int(load_monthly_summary(settings)["cases"].sum()) == 3
+    assert int(marts.monthly["cases"].sum()) == 3
     assert set(daily.columns) == MART_COLUMNS
-    assert load_quality(settings)["linhas_tratadas"] == 3
+    assert set(marts.monthly.columns) == {"month", "uf", "cases"}
+    # Contagens precisam ser inteiras (o Postgres rejeita "2.0" em colunas bigint).
+    assert str(marts.monthly["cases"].dtype).startswith("int")
+    assert all(
+        str(marts.daily[column].dtype).startswith("int") for column in MART_COLUMNS - {"dt", "uf"}
+    )
+    assert marts.quality["linhas_tratadas"] == 3
 
 
-def test_only_aggregated_marts_are_written_to_disk(built, tmp_path):
-    parquet_files = {path.name for path in tmp_path.rglob("*.parquet")}
-    assert parquet_files == {
-        "mart_srag_daily_summary.parquet",
-        "mart_srag_monthly_summary.parquet",
-    }
+def test_pipeline_writes_nothing_to_disk_besides_the_audit_log(marts, settings, tmp_path):
+    produced = {path for path in tmp_path.rglob("*") if path.is_file()}
+    expected = {settings.audit_log_path, *settings.staging_dir.glob("INFLUD*.csv")}
+    assert produced == expected  # nenhum Parquet nem arquivo de dados derivado
 
 
-def test_needs_rebuild_only_when_marts_missing_or_stale(built):
-    settings, _ = built
-    assert not needs_rebuild(settings)
-    settings.daily_mart_file.unlink()
-    assert needs_rebuild(settings)
+def test_missing_staging_files_raise_a_clear_error(tmp_path):
+    settings = Settings(data_dir=tmp_path, audit_log_path=tmp_path / "audit.jsonl")
+    (tmp_path / "staging").mkdir()
+    with pytest.raises(FileNotFoundError, match="INFLUD"):
+        build_marts(settings, AuditLogger(settings.audit_log_path))
 
 
 def test_sensitive_column_guard_blocks_sql():

@@ -10,11 +10,11 @@ from srag_agent.agent import run_agent
 from srag_agent.audit import AuditLogger
 from srag_agent.config import VALID_UFS, Settings
 from srag_agent.pipeline import (
-    load_daily_summary,
-    load_monthly_summary,
-    load_quality,
-    needs_rebuild,
-    run_pipeline,
+    build_marts,
+    publish_marts,
+    read_daily_summary,
+    read_monthly_summary,
+    read_quality,
 )
 from srag_agent.report import build_report, save_report
 from srag_agent.tools import ToolContext, build_tools
@@ -28,9 +28,16 @@ def _parse_args(argv: list[str] | None) -> argparse.Namespace:
     parser.add_argument("--request", default=DEFAULT_REQUEST, help="Pedido em linguagem natural")
     parser.add_argument("--no-llm", action="store_true", help="Gera o relatório sem o agente LLM")
     parser.add_argument(
-        "--rebuild", action="store_true", help="Reexecuta a pipeline de dados (staging -> marts)"
+        "--publish-supabase",
+        action="store_true",
+        help="Refaz a pipeline (data/staging -> marts) e publica os marts no Supabase",
     )
     return parser.parse_args(argv)
+
+
+def _publish_marts(settings: Settings, audit: AuditLogger) -> None:
+    marts = build_marts(settings, audit)
+    publish_marts(marts.daily, marts.monthly, marts.quality, audit)
 
 
 def _run_without_llm(ctx: ToolContext, uf: str | None) -> str:
@@ -50,12 +57,19 @@ def main(argv: list[str] | None = None) -> int:
     audit = AuditLogger(settings.audit_log_path)
     audit.log("run_start", uf=args.uf, use_llm=not args.no_llm, request=args.request)
 
-    if args.rebuild or needs_rebuild(settings):
-        run_pipeline(settings, audit)
-    daily = load_daily_summary(settings)
-    quality = load_quality(settings)
+    try:
+        if args.publish_supabase:
+            _publish_marts(settings, audit)
+        audit.log("data_source", backend="supabase")
+        daily = read_daily_summary()
+        monthly = read_monthly_summary()
+        quality = read_quality()
+    except (RuntimeError, FileNotFoundError) as error:  # configuração, CSVs ou conexão com o banco
+        audit.log("run_error", error_type="DatabaseError", error=str(error)[:300])
+        print(f"Erro de dados: {error}", file=sys.stderr)
+        return 1
     as_of = min(daily["dt"].max().date(), date.today())
-    ctx = ToolContext(settings, daily, load_monthly_summary(settings), as_of, audit, uf=args.uf)
+    ctx = ToolContext(settings, daily, monthly, as_of, audit, uf=args.uf)
 
     if args.no_llm:
         narrative = _run_without_llm(ctx, args.uf)
