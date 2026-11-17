@@ -59,8 +59,13 @@ escreve a análise. Cada decisão, chamada de tool e resultado de guardrail é r
 | Taxa de aumento de casos | Variação % dos casos dos últimos 30 dias vs. os 30 anteriores |
 | Variação vs. ano anterior | Casos dos últimos 30 dias vs. a mesma janela 52 semanas antes (mesmos dias da semana), para separar sazonalidade de tendência |
 | Taxa de mortalidade | Óbitos por SRAG / casos com desfecho conhecido |
-| Taxa de ocupação de UTI | Internações que passaram por UTI / internações com informação de UTI (proxy; os dados não trazem capacidade de leitos) |
-| Taxa de vacinação | Casos com vacina COVID-19 / casos com informação vacinal (proxy; não é cobertura populacional) |
+| Taxa de ocupação de UTI | Internações por SRAG que passaram por UTI / internações com informação de UTI. **Proxy:** o SIVEP-Gripe não traz a capacidade de leitos, então não é a ocupação real dos leitos de UTI, e sim a parcela das internações por SRAG que precisou de UTI |
+| Taxa de vacinação | Casos de SRAG com vacina COVID-19 / casos com informação vacinal. **Proxy:** o desafio pede a taxa "da população", mas a base só tem pessoas que adoeceram e não traz a população total; por isso o valor é a proporção de vacinados entre os casos de SRAG, não a cobertura vacinal populacional |
+
+> **Por que dois proxies?** Todos os dados vêm do SIVEP-Gripe (internações por SRAG). Não há denominador
+> populacional nem capacidade de leitos nessa fonte, e o relatório não inventa esses números: cada
+> métrica mostra numerador, denominador e definição, e diz que é proxy quando for o caso. Medir as
+> versões "reais" exigiria fontes adicionais (por exemplo, população do IBGE/SI-PNI e o CNES para leitos).
 
 Gráficos: casos diários (30 dias) e mensais (12 meses), por data de notificação.
 
