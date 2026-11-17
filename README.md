@@ -9,19 +9,46 @@ relatório com métricas, gráficos e uma análise contextualizada.
 Diagrama conceitual: [docs/arquitetura.pdf](docs/arquitetura.pdf).
 
 ```
-Pedido ─► [Guardrail de entrada] ─► Agente (LangGraph + LLM) ◄─► Tools
-                                          │                          ├─ get_srag_metrics ─► marts (Parquet)
-                                          ▼                          ├─ generate_srag_charts
-                                  [Guardrail de saída]               └─ search_srag_news ─► Google News RSS
+Pedido ─► [Guardrail de entrada] ─► Agente orquestrador (LangGraph) ◄─► LLM
+                                          │
+                                          ├─ get_srag_metrics ────┐
+                                          ├─ get_srag_breakdowns ─┼─► marts agregados (Parquet)
+                                          ├─ generate_srag_charts ┘
+                                          └─ search_srag_news ─────► Google News RSS
+                                          ▼
+                                  [Guardrail de saída]
                                           ▼
                        Relatório Markdown (números calculados em código) + auditoria JSONL
 ```
 
-**Por que um grafo LangGraph com guardrails como nós?** Os guardrails ficam no fluxo de controle (não
-só no prompt), são determinísticos e podem devolver feedback ao LLM para nova tentativa (até 2x).
+### Ferramentas (tools) do agente
 
-**Por que o LLM não calcula números?** Métricas e tabelas vêm de código testado. O LLM apenas escreve a
-análise, e o guardrail de saída rejeita qualquer percentual que não corresponda a uma métrica calculada.
+| Tool | O que faz | Fonte |
+|---|---|---|
+| `get_srag_metrics` | Calcula as 5 métricas (aumento de casos, variação vs. ano anterior, mortalidade, UTI, vacinação) | Marts |
+| `get_srag_breakdowns` | Composição por agente etiológico e, na visão nacional, as UFs com mais casos e maior crescimento | Marts |
+| `generate_srag_charts` | Gera os gráficos de casos diários (30 dias) e mensais (12 meses) | Marts |
+| `search_srag_news` | Busca notícias recentes sobre SRAG, sanitizadas e marcadas como não confiáveis | Google News RSS |
+
+O LLM (OpenAI por padrão; Claude, Gemini e Groq via `SRAG_PROVIDER`) decide quais tools chamar e
+escreve a análise. Cada decisão, chamada de tool e resultado de guardrail é registrado na auditoria.
+
+### Decisões de arquitetura
+
+- **Orquestrador LangGraph com guardrails como nós.** Os guardrails ficam no fluxo de controle (não
+  só no prompt), são determinísticos e podem devolver feedback ao LLM para nova tentativa (até 2x).
+- **O LLM não calcula números.** Métricas e tabelas vêm de código testado; o LLM apenas escreve a
+  análise, e o guardrail de saída rejeita qualquer percentual que não corresponda a um valor calculado.
+- **Agente com tools, sem RAG ou banco vetorial.** O problema é de consulta e cálculo sobre dados
+  estruturados e de notícias do momento, não de busca semântica em documentos; embeddings não
+  agregariam precisão, só custo e complexidade.
+- **DuckDB + Parquet em vez de um banco servidor.** 585 mil linhas cabem em memória, e o avaliador
+  reproduz tudo clonando o repositório, sem credenciais nem infraestrutura. Os marts agregados fazem o
+  papel do banco consultado pelo agente.
+- **Notícias por Google News RSS.** Gratuito, em português e sem chave de API; os títulos entram como
+  dado externo não confiável.
+- **LLM configurável.** A mesma fiação funciona com 4 provedores, o que evitou o projeto ficar
+  preso a limites de um único serviço.
 
 ### Métricas (janela de 30 dias terminando na última data de notificação)
 
@@ -54,17 +81,19 @@ Contexto adicional (também calculado em código, nunca pelo LLM):
 - **Tools:** argumentos validados com Pydantic (UF válida, termos de busca restritos).
 - **Conteúdo externo:** notícias são sanitizadas, descartadas se parecerem instruções e marcadas como
   não confiáveis; XML parseado com `defusedxml`.
-- **Saída:** sem PII, percentuais ancorados nas métricas, URLs apenas das fontes recuperadas.
+- **Saída:** sem PII, percentuais ancorados nas métricas e tabelas calculadas, URLs apenas das
+  fontes recuperadas e imagens removidas do texto do LLM.
 
 ## Tratamento de dados sensíveis
 - Minimização: só 7 colunas úteis são mantidas (`DT_NOTIFIC`, `SG_UF_NOT`, `HOSPITAL`, `UTI`,
-  `EVOLUCAO`, `VACINA_COV`, `CLASSI_FIN`). Colunas identificadoras (CPF, nome, endereço, data de nascimento etc.)
-  estão numa lista de bloqueio e o SQL de qualquer camada que as referencie é recusado antes de rodar.
+  `EVOLUCAO`, `VACINA_COV`, `CLASSI_FIN`). Colunas identificadoras (CPF, nome, endereço, data de
+  nascimento etc.) estão numa lista de bloqueio e o SQL de qualquer camada que as referencie é recusado antes de rodar.
 - Pseudonimização: a chave de deduplicação é um SHA-256 de campos não nominais (nº da notificação,
   município, sexo, idade etc.), calculado ao tipar o staging; os campos de origem não são gravados.
 - As tools do agente leem somente os marts agregados; ao LLM chegam métricas e títulos de notícias,
   nunca registros individuais.
-- Redação automática de CPF, e-mail e telefone em entradas, notícias e saídas.
+- Detecção de CPF, e-mail e telefone: o pedido com PII é bloqueado, as notícias têm o PII removido
+  e uma análise do LLM com PII é rejeitada.
 - Chave de API só via variável de ambiente; `.env` e dados brutos estão no `.gitignore`.
 
 ## Tratamento dos dados
@@ -132,7 +161,5 @@ uv run srag-report --rebuild      # reexecuta a pipeline de dados (staging -> ma
 uv run pytest                     # testes
 ```
 O relatório é salvo em `reports/relatorio_<data>.md`, com os gráficos ao lado.
-Um exemplo real gerado pelo agente está em [docs/exemplo/](docs/exemplo/relatorio_2026-11-15.md).
-O dicionário de dados usado como referência está em `docs/dicionario-de-dados-2019-a-2025.pdf`.
 Um exemplo real gerado pelo agente está em [docs/exemplo/](docs/exemplo/relatorio_2026-11-15.md).
 O dicionário de dados usado como referência está em `docs/dicionario-de-dados-2019-a-2025.pdf`.
